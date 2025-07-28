@@ -391,31 +391,38 @@ print("✅ GA4 functions registered with AutoGen agents")
 
 def parse_natural_language_query(user_request: str) -> Dict:
     """Parse user request into GA4 dimensions/metrics"""
-    query_mapping = {
-        'traffic trends': {'dimensions': ['date'], 'metrics': ['sessions', 'totalUsers']},
-        'traffic sources': {'dimensions': ['source', 'medium'], 'metrics': ['sessions']},
-        'top pages': {'dimensions': ['pagePath'], 'metrics': ['screenPageViews']},
-        'device analysis': {'dimensions': ['deviceCategory'], 'metrics': ['sessions']},
-        'country analysis': {'dimensions': ['country'], 'metrics': ['sessions']},
-        'browser analysis': {'dimensions': ['browser'], 'metrics': ['sessions']},
-        'conversion': {'dimensions': ['date'], 'metrics': ['conversions', 'totalRevenue']},
-        'engagement': {'dimensions': ['date'], 'metrics': ['engagementRate', 'averageSessionDuration']},
-        'bounce rate': {'dimensions': ['date'], 'metrics': ['bounceRate']},
-        'new vs returning': {'dimensions': ['userType'], 'metrics': ['sessions']},
-        'channel performance': {'dimensions': ['sessionDefaultChannelGroup'], 'metrics': ['sessions', 'conversions']},
-        'page performance': {'dimensions': ['pagePath'], 'metrics': ['screenPageViews', 'bounceRate']},
-        'geographic analysis': {'dimensions': ['country', 'city'], 'metrics': ['sessions']},
-        'time analysis': {'dimensions': ['dateHour'], 'metrics': ['sessions']},
-        'campaign analysis': {'dimensions': ['campaign'], 'metrics': ['sessions', 'conversions']}
-    }
-    
     user_request_lower = user_request.lower()
-    for pattern, config in query_mapping.items():
-        if pattern in user_request_lower:
-            return config
     
-    # Default fallback
-    return {'dimensions': ['date'], 'metrics': ['sessions']}
+    # Page analysis patterns - check these first as they're more specific
+    if any(phrase in user_request_lower for phrase in ['top pages', 'top performing pages', 'best pages', 'most viewed pages', 'page views', 'popular pages']):
+        return {'dimensions': ['pagePath'], 'metrics': ['screenPageViews']}
+    
+    # Traffic source patterns
+    if any(phrase in user_request_lower for phrase in ['traffic source', 'referral', 'where traffic', 'how users found']):
+        return {'dimensions': ['source', 'medium'], 'metrics': ['sessions']}
+    
+    # Device patterns
+    if any(phrase in user_request_lower for phrase in ['device', 'mobile', 'desktop', 'tablet']):
+        return {'dimensions': ['deviceCategory'], 'metrics': ['sessions']}
+    
+    # Geographic patterns
+    if any(phrase in user_request_lower for phrase in ['country', 'location', 'geographic', 'where users', 'city']):
+        return {'dimensions': ['country'], 'metrics': ['sessions']}
+    
+    # Conversion patterns
+    if any(phrase in user_request_lower for phrase in ['conversion', 'goal', 'revenue', 'purchase']):
+        return {'dimensions': ['date'], 'metrics': ['conversions', 'totalRevenue']}
+    
+    # Engagement patterns
+    if any(phrase in user_request_lower for phrase in ['engagement', 'session duration', 'time on site']):
+        return {'dimensions': ['date'], 'metrics': ['engagementRate', 'averageSessionDuration']}
+    
+    # Channel patterns
+    if any(phrase in user_request_lower for phrase in ['channel', 'organic', 'paid', 'social', 'direct']):
+        return {'dimensions': ['sessionDefaultChannelGroup'], 'metrics': ['sessions', 'conversions']}
+    
+    # Default to traffic trends for general queries
+    return {'dimensions': ['date'], 'metrics': ['sessions', 'totalUsers']}
 
 def parse_date_range(user_request: str) -> tuple:
     """Extract date range from natural language"""
