@@ -259,13 +259,6 @@ class GA4DataManager:
                         row_data[dim] = datetime.strptime(value, '%Y%m%d').strftime('%Y-%m-%d')
                     except:
                         row_data[dim] = value
-                elif dim == "pagePath":
-                    # Clean up page path for better readability
-                    row_data[dim] = self._clean_page_path(value)
-                    row_data[dim + "_raw"] = value  # Keep original for reference
-                elif dim == "pageTitle":
-                    # Clean up page title
-                    row_data[dim] = self._clean_page_title(value)
                 else:
                     row_data[dim] = value
             
@@ -284,43 +277,6 @@ class GA4DataManager:
             data.append(row_data)
         
         return data
-    
-    def _clean_page_path(self, path: str) -> str:
-        """Clean and make page paths more readable"""
-        if not path or path.strip() == "":
-            return "Unknown Page"
-        
-        # Handle homepage
-        if path == "/" or path == "":
-            return "Homepage"
-        
-        # Remove query parameters for cleaner display
-        if "?" in path:
-            path = path.split("?")[0]
-        
-        # Remove trailing slashes
-        path = path.rstrip("/")
-        
-        # If still empty after cleaning, it's homepage
-        if not path:
-            return "Homepage"
-        
-        # Limit length for display
-        if len(path) > 50:
-            return path[:47] + "..."
-        
-        return path
-    
-    def _clean_page_title(self, title: str) -> str:
-        """Clean and make page titles more readable"""
-        if not title or title.strip() == "" or title == "(not set)":
-            return "Untitled Page"
-        
-        # Limit length for display
-        if len(title) > 60:
-            return title[:57] + "..."
-        
-        return title
 
 class QueryIntelligence:
     """Enhanced query parsing and intelligence"""
@@ -524,39 +480,19 @@ class ProfessionalVisualizer:
                     ))
             
             fig.update_layout(
-                title=dict(
-                    text="Website Traffic Trends",
-                    font=dict(size=16, color='#1e293b')
-                ),
+                title="Website Traffic Trends",
                 xaxis_title="Date",
                 yaxis_title="Count",
                 hovermode='x unified',
-                template='simple_white',
+                template='plotly_white',
                 height=500,
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(size=12, color='#374151'),
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
                     y=1.02,
                     xanchor="right",
-                    x=1,
-                    font=dict(size=11)
-                ),
-                margin=dict(t=60, l=60, r=40, b=60)
-            )
-            
-            # Update axes styling
-            fig.update_xaxes(
-                gridcolor='#f1f5f9',
-                linecolor='#e2e8f0',
-                tickfont=dict(size=11, color='#6b7280')
-            )
-            fig.update_yaxes(
-                gridcolor='#f1f5f9',
-                linecolor='#e2e8f0',
-                tickfont=dict(size=11, color='#6b7280')
+                    x=1
+                )
             )
         
         return fig
@@ -565,14 +501,6 @@ class ProfessionalVisualizer:
         """Create professional comparison charts"""
         # Take top 10 for readability
         df_sorted = df.nlargest(10, metric)
-        
-        # Create hover template with raw data if available
-        if dimension == "pagePath" and f"{dimension}_raw" in df_sorted.columns:
-            hover_template = '<b>%{y}</b><br>' + f'{metric.title()}: %{{x:,}}<br>' + 'Raw Path: %{customdata}<extra></extra>'
-            customdata = df_sorted[f"{dimension}_raw"]
-        else:
-            hover_template = f'<b>%{{y}}</b><br>{metric.title()}: %{{x:,}}<extra></extra>'
-            customdata = None
         
         fig = go.Figure(data=[
             go.Bar(
@@ -587,36 +515,17 @@ class ProfessionalVisualizer:
                 text=df_sorted[metric],
                 texttemplate='%{text:,}',
                 textposition='auto',
-                hovertemplate=hover_template,
-                customdata=customdata
+                hovertemplate=f'<b>%{{y}}</b><br>{metric.title()}: %{{x:,}}<extra></extra>'
             )
         ])
         
         fig.update_layout(
-            title=dict(
-                text=f"Top 10 {dimension.title()} by {metric.title()}",
-                font=dict(size=16, color='#1e293b')
-            ),
+            title=f"Top 10 {dimension.title()} by {metric.title()}",
             xaxis_title=metric.title(),
             yaxis_title=dimension.title(),
-            template='simple_white',
+            template='plotly_white',
             height=500,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(size=12, color='#374151'),
-            margin=dict(l=150, t=60, r=40, b=60)
-        )
-        
-        # Update axes styling
-        fig.update_xaxes(
-            gridcolor='#f1f5f9',
-            linecolor='#e2e8f0',
-            tickfont=dict(size=11, color='#6b7280')
-        )
-        fig.update_yaxes(
-            gridcolor='#f1f5f9',
-            linecolor='#e2e8f0',
-            tickfont=dict(size=11, color='#6b7280')
+            margin=dict(l=150)  # More space for labels
         )
         
         return fig
@@ -632,19 +541,9 @@ class ProfessionalVisualizer:
             
             # Add "Others" segment
             others_row = {dimension: 'Others', metric: others_value}
-            if f"{dimension}_raw" in df_sorted.columns:
-                others_row[f"{dimension}_raw"] = 'Others'
             top_segments = pd.concat([top_segments, pd.DataFrame([others_row])], ignore_index=True)
         else:
             top_segments = df_sorted
-        
-        # Create hover template with raw data if available
-        if dimension == "pagePath" and f"{dimension}_raw" in top_segments.columns:
-            hover_template = '<b>%{label}</b><br>Count: %{value:,}<br>Percentage: %{percent}<br>Raw Path: %{customdata}<extra></extra>'
-            customdata = top_segments[f"{dimension}_raw"]
-        else:
-            hover_template = '<b>%{label}</b><br>Count: %{value:,}<br>Percentage: %{percent}<extra></extra>'
-            customdata = None
         
         fig = go.Figure(data=[
             go.Pie(
@@ -654,31 +553,22 @@ class ProfessionalVisualizer:
                 textinfo='label+percent',
                 textposition='auto',
                 marker=dict(colors=self.color_sequence * 3),  # Repeat colors if needed
-                hovertemplate=hover_template,
-                customdata=customdata
+                hovertemplate='<b>%{label}</b><br>Count: %{value:,}<br>Percentage: %{percent}<extra></extra>'
             )
         ])
         
         fig.update_layout(
-            title=dict(
-                text=f"{dimension.title()} Distribution by {metric.title()}",
-                font=dict(size=16, color='#1e293b')
-            ),
-            template='simple_white',
+            title=f"{dimension.title()} Distribution by {metric.title()}",
+            template='plotly_white',
             height=500,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(size=12, color='#374151'),
             showlegend=True,
             legend=dict(
                 orientation="v",
                 yanchor="middle",
                 y=0.5,
                 xanchor="left",
-                x=1.05,
-                font=dict(size=11)
-            ),
-            margin=dict(t=60, l=40, r=150, b=60)
+                x=1.05
+            )
         )
         
         return fig
@@ -727,7 +617,8 @@ class ReportGenerator:
                 "insights": insights,
                 "visualizations": visualizations,
                 "data": data_result['data'],
-                "metadata": data_result['metadata']
+                "metadata": data_result['metadata'],
+                "recommendations": self._generate_recommendations(df, query_config['type'])
             }
             
         except Exception as e:
@@ -766,16 +657,7 @@ class ReportGenerator:
         elif query_type == "pages" and 'pagePath' in df.columns:
             if 'screenPageViews' in df.columns:
                 top_page = df.loc[df['screenPageViews'].idxmax()]
-                page_name = top_page['pagePath']
-                insights.append(f"📄 Most viewed page: {page_name} ({top_page['screenPageViews']:,} views)")
-                
-                # Additional homepage insights
-                homepage_data = df[df['pagePath'] == 'Homepage']
-                if not homepage_data.empty and len(df) > 1:
-                    homepage_views = homepage_data['screenPageViews'].sum()
-                    total_views = df['screenPageViews'].sum()
-                    homepage_percentage = (homepage_views / total_views) * 100
-                    insights.append(f"🏠 Homepage accounts for {homepage_percentage:.1f}% of all page views")
+                insights.append(f"📄 Most viewed page: {top_page['pagePath']} ({top_page['screenPageViews']:,} views)")
         
         return insights
     
@@ -803,6 +685,37 @@ class ReportGenerator:
                 visualizations.append({"type": "page_performance", "figure": fig})
         
         return visualizations
+    
+    def _generate_recommendations(self, df: pd.DataFrame, query_type: str) -> List[str]:
+        """Generate actionable recommendations"""
+        recommendations = []
+        
+        if query_type == "traffic":
+            if 'sessions' in df.columns:
+                avg_sessions = df['sessions'].mean()
+                if avg_sessions < 100:
+                    recommendations.append("🚀 Consider increasing marketing efforts to boost daily traffic")
+                elif avg_sessions > 1000:
+                    recommendations.append("✅ Strong traffic levels - focus on conversion optimization")
+        
+        elif query_type == "acquisition":
+            if 'source' in df.columns:
+                source_diversity = len(df['source'].unique())
+                if source_diversity < 3:
+                    recommendations.append("🎯 Diversify traffic sources to reduce dependency risk")
+        
+        elif query_type == "technology":
+            if 'deviceCategory' in df.columns:
+                mobile_sessions = df[df['deviceCategory'] == 'mobile']['sessions'].sum() if 'sessions' in df.columns else 0
+                total_sessions = df['sessions'].sum() if 'sessions' in df.columns else 1
+                mobile_percentage = (mobile_sessions / total_sessions) * 100
+                
+                if mobile_percentage > 60:
+                    recommendations.append("📱 High mobile traffic - ensure mobile optimization is prioritized")
+                elif mobile_percentage < 30:
+                    recommendations.append("💻 Low mobile traffic - consider mobile marketing strategies")
+        
+        return recommendations
 
 # Enhanced AutoGen Integration
 def create_enhanced_analyst_agent():
@@ -848,170 +761,34 @@ def configure_streamlit():
     # Custom CSS for professional styling
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;500;600;700&display=swap');
-    
-    html, body, [class*="css"] {
-        font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-    }
-    
     .main-header {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #1a202c;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1f77b4;
         text-align: center;
-        margin-bottom: 0.4rem;
-        letter-spacing: -0.01em;
+        margin-bottom: 2rem;
     }
-    
-    .subtitle {
-        font-size: 0.9rem;
-        font-weight: 400;
-        color: #718096;
-        text-align: center;
-        margin-bottom: 1.25rem;
-    }
-    
     .metric-card {
-        background: #ffffff;
-        padding: 0.8rem;
-        border-radius: 4px;
-        border: 1px solid #d1d5db;
-        margin: 0.4rem 0;
-        font-size: 0.8rem;
-        line-height: 1.3;
-        color: #374151;
-        font-weight: 500;
-    }
-    
-    .insight-box {
-        background: #f9fafb;
-        padding: 0.7rem;
-        border-radius: 4px;
-        border-left: 1px solid #d1d5db;
-        margin: 0.3rem 0;
-        font-size: 0.8rem;
-        line-height: 1.3;
-        color: #6b7280;
-    }
-    
-    .stButton > button {
-        background-color: #4299e1;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 0.45rem 0.9rem;
-        font-weight: 500;
-        font-size: 0.85rem;
-        max-width: 280px;
-        margin: 0 auto;
-        display: block;
-        font-family: 'Source Sans Pro', sans-serif;
-    }
-    
-    .stButton > button:hover {
-        background-color: #3182ce;
-        border: none;
-    }
-    
-    .sidebar .stButton > button {
-        max-width: none;
-        width: 100%;
-    }
-    
-    /* Sidebar styling */
-    .css-1d391kg {
-        padding-top: 1rem;
-    }
-    
-    /* Input styling */
-    .stTextInput > div > div > input {
-        font-size: 0.85rem;
-        font-family: 'Source Sans Pro', sans-serif;
-    }
-    
-    .stTextArea > div > div > textarea {
-        font-size: 0.85rem;
-        line-height: 1.4;
-        font-family: 'Source Sans Pro', sans-serif;
-    }
-    
-    /* Headers - Professional and compact */
-    h1, h2, h3 {
-        font-family: 'Source Sans Pro', sans-serif;
-        font-weight: 600;
-        letter-spacing: 0;
-    }
-    
-    h2 {
-        font-size: 0.65rem;
-        color: #4a5568;
-        margin-top: 0.5rem;
-        margin-bottom: 0.2rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-    }
-    
-    h3 {
-        font-size: 0.9rem;
-        color: #4a5568;
-        margin-bottom: 0.4rem;
-        font-weight: 500;
-    }
-    
-    /* Selectbox and other inputs */
-    .stSelectbox > div > div {
-        font-size: 0.85rem;
-        font-family: 'Source Sans Pro', sans-serif;
-    }
-    
-    /* Metrics */
-    [data-testid="metric-container"] {
         background: white;
-        border: 1px solid #e2e8f0;
-        padding: 0.75rem;
-        border-radius: 6px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #1f77b4;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 0.5rem 0;
     }
-    
-    /* Tips section - More subtle */
-    .tips-section {
-        background: #f7fafc;
-        padding: 0.85rem;
-        border-radius: 6px;
-        border-left: 2px solid #cbd5e0;
-        font-size: 0.8rem;
-        line-height: 1.3;
-        color: #4a5568;
+    .insight-box {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #2ca02c;
+        margin: 1rem 0;
     }
-    
-    /* Chart containers with borders */
-    .js-plotly-plot {
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 6px !important;
-        overflow: hidden !important;
-    }
-    
-    /* Footer */
-    .footer {
-        text-align: center;
-        color: #718096;
-        font-size: 0.75rem;
-        margin-top: 2.5rem;
-        padding: 0.75rem;
-        border-top: 1px solid #e2e8f0;
-    }
-    
-    /* Remove default margins */
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        max-width: 1200px;
-    }
-    
-    /* General text improvements */
-    p, div, span {
-        font-family: 'Source Sans Pro', sans-serif;
+    .recommendation-box {
+        background: #fff3cd;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #ff9500;
+        margin: 1rem 0;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -1021,8 +798,8 @@ def main():
     configure_streamlit()
     
     # Header
-    st.markdown('<h1 class="main-header">GA4 Analytics Intelligence Platform</h1>', unsafe_allow_html=True)
-    st.markdown('<div class="subtitle">Transform your Google Analytics data into actionable business insights</div>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">📊 GA4 Analytics Intelligence Platform</h1>', unsafe_allow_html=True)
+    st.markdown("### Transform your Google Analytics data into actionable business insights")
     
     # Sidebar configuration
     with st.sidebar:
@@ -1078,7 +855,7 @@ def main():
         )
     
     # Main content area
-    col1, col2 = st.columns([3, 2])
+    col1, col2 = st.columns([2, 1])
     
     with col1:
         # User input with default prompt
@@ -1087,39 +864,27 @@ def main():
         user_query = st.text_area(
             "What would you like to analyze?",
             value=selected_example if selected_example else default_prompt,
-            height=120,
+            height=100,
             placeholder="Example: 'Show me traffic trends for the last 30 days and identify my top traffic sources'"
         )
     
     with col2:
         st.markdown("### 🎯 Query Tips")
         st.markdown("""
-        <div class="tips-section">
-        <strong>Time Periods:</strong><br>
-        • "last 30 days", "this month"<br>
-        • "past week", "yesterday"<br><br>
+        **Time Periods:**
+        - "last 30 days", "this month"
+        - "past week", "yesterday"
         
-        <strong>Analysis Types:</strong><br>
-        • Traffic trends<br>
-        • Page performance<br>
-        • Traffic sources<br>
-        • Device analysis<br>
-        • Conversions
-        </div>
-        """, unsafe_allow_html=True)
+        **Analysis Types:**
+        - Traffic trends
+        - Page performance  
+        - Traffic sources
+        - Device analysis
+        - Conversions
+        """)
     
-    # Initialize session state for report data
-    if 'report_data' not in st.session_state:
-        st.session_state.report_data = None
-    if 'show_raw_data' not in st.session_state:
-        st.session_state.show_raw_data = False
-    
-    # Generate Report Button - centered and appropriately sized
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        generate_report = st.button("📊 Create Report", type="primary")
-    
-    if generate_report:
+    # Generate Report Button
+    if st.button("📊 Create Report", type="primary", use_container_width=True):
         if not property_id:
             st.error("❌ Please enter your GA4 Property ID in the sidebar")
         elif not os.path.exists(service_account_path):
@@ -1134,80 +899,79 @@ def main():
             # Generate report
             with st.spinner("🔄 Analyzing your data... This may take a moment"):
                 report = report_generator.generate_comprehensive_report(user_query)
-                st.session_state.report_data = report
-                st.session_state.show_raw_data = False  # Reset raw data view
-    
-    # Display report if we have data (either from current generation or session state)
-    if st.session_state.report_data and st.session_state.report_data["success"]:
-        report = st.session_state.report_data
-        
-        # Display Executive Summary
-        st.markdown("## Executive Summary")
-        st.markdown('<div class="metric-card">' + report["executive_summary"] + '</div>', unsafe_allow_html=True)
-        
-        # Display Key Insights
-        if report.get("insights"):
-            st.markdown("## Key Insights")
-            for insight in report["insights"]:
-                st.markdown('<div class="insight-box">' + insight + '</div>', unsafe_allow_html=True)
-        
-        # Display Visualizations
-        if report.get("visualizations"):
-            st.markdown("## Charts & Analysis")
-            for viz in report["visualizations"]:
-                st.plotly_chart(viz["figure"], use_container_width=True)
-        
-        # Data Export Section
-        if report.get("data"):
-            st.markdown("## Data Export")
             
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                # CSV Export
-                df = pd.DataFrame(report["data"])
-                csv = df.to_csv(index=False)
-                st.download_button(
-                    "📄 Download CSV",
-                    csv,
-                    f"ga4_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                    "text/csv",
-                    use_container_width=True
-                )
-            
-            with col2:
-                # JSON Export
-                json_data = json.dumps(report["data"], indent=2)
-                st.download_button(
-                    "📝 Download JSON",
-                    json_data,
-                    f"ga4_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                    "application/json",
-                    use_container_width=True
-                )
-            
-            with col3:
-                # Toggle for raw data view
-                if st.button("👁️ View Raw Data", use_container_width=True):
-                    st.session_state.show_raw_data = not st.session_state.show_raw_data
-            
-            # Show raw data if toggled
-            if st.session_state.show_raw_data:
-                st.markdown("### Raw Data")
-                st.dataframe(df, use_container_width=True)
-        
-
-    
-    elif st.session_state.report_data and not st.session_state.report_data["success"]:
-        st.error(f"❌ Report generation failed: {st.session_state.report_data['error']}")
-        if st.session_state.report_data.get("suggestion"):
-            st.info(f"💡 Suggestion: {st.session_state.report_data['suggestion']}")
+            if report["success"]:
+                # Display Executive Summary
+                st.markdown("## 📋 Executive Summary")
+                st.markdown('<div class="metric-card">' + report["executive_summary"] + '</div>', unsafe_allow_html=True)
+                
+                # Display Key Insights
+                if report.get("insights"):
+                    st.markdown("## 🎯 Key Insights")
+                    for insight in report["insights"]:
+                        st.markdown('<div class="insight-box">' + insight + '</div>', unsafe_allow_html=True)
+                
+                # Display Visualizations
+                if report.get("visualizations"):
+                    st.markdown("## 📊 Visual Analysis")
+                    for viz in report["visualizations"]:
+                        st.plotly_chart(viz["figure"], use_container_width=True)
+                
+                # Display Recommendations
+                if report.get("recommendations"):
+                    st.markdown("## 💡 Strategic Recommendations")
+                    for rec in report["recommendations"]:
+                        st.markdown('<div class="recommendation-box">' + rec + '</div>', unsafe_allow_html=True)
+                
+                # Data Export Section
+                if report.get("data"):
+                    st.markdown("## 📥 Data Export")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        # CSV Export
+                        df = pd.DataFrame(report["data"])
+                        csv = df.to_csv(index=False)
+                        st.download_button(
+                            "📄 Download CSV",
+                            csv,
+                            f"ga4_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            "text/csv",
+                            use_container_width=True
+                        )
+                    
+                    with col2:
+                        # JSON Export
+                        json_data = json.dumps(report["data"], indent=2)
+                        st.download_button(
+                            "📝 Download JSON",
+                            json_data,
+                            f"ga4_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                            "application/json",
+                            use_container_width=True
+                        )
+                    
+                    with col3:
+                        # Show raw data
+                        if st.button("👁️ View Raw Data", use_container_width=True):
+                            st.dataframe(df, use_container_width=True)
+                
+                # Metadata
+                if report.get("metadata"):
+                    with st.expander("📋 Report Metadata"):
+                        st.json(report["metadata"])
+                        
+            else:
+                st.error(f"❌ Report generation failed: {report['error']}")
+                if report.get("suggestion"):
+                    st.info(f"💡 Suggestion: {report['suggestion']}")
     
     # Footer
     st.markdown("---")
     st.markdown(
-        '<div class="footer"><strong>GA4 Analytics Intelligence Platform</strong> | Powered by Google Analytics 4 API & AI Analysis</div>',
-        unsafe_allow_html=True
+        "**GA4 Analytics Intelligence Platform** | Powered by Google Analytics 4 API & AI Analysis",
+        help="Professional analytics reporting for data-driven business decisions"
     )
 
 if __name__ == "__main__":
